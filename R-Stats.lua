@@ -409,22 +409,75 @@ local function expandPanel()
     end)
 end
 
--- Dragging functionality
+-- Replace the TitleBar.InputBegan and TitleBar.InputEnded connections with these:
+
+-- Dragging functionality for the title bar
+-- Replace the TitleBar.InputBegan connection with this:
 TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        if not isPinned then
-            isDragging = true
-            dragOffset = input.Position - TitleBar.AbsolutePosition
-        end
+    if (input.UserInputType == Enum.UserInputType.MouseButton1 or 
+        input.UserInputType == Enum.UserInputType.Touch) and not isPinned then
+        
+        -- Calculate the offset from the cursor to the top-left of the MainFrame
+        local mousePos = UserInputService:GetMouseLocation()
+        dragOffset = Vector2.new(
+            mousePos.X - MainFrame.AbsolutePosition.X,
+            mousePos.Y - MainFrame.AbsolutePosition.Y
+        )
+        
+        isDragging = true
     end
 end)
 
-TitleBar.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isDragging = false
-        dragOffset = nil
+-- And replace the UserInputService.InputChanged handler with this:
+UserInputService.InputChanged:Connect(function(input)
+    if isDragging and 
+       (input.UserInputType == Enum.UserInputType.MouseMovement or 
+        input.UserInputType == Enum.UserInputType.Touch) then
+        
+        local mousePos = UserInputService:GetMouseLocation()
+        local newPosition = UDim2.new(
+            0, 
+            mousePos.X - dragOffset.X,
+            0, 
+            mousePos.Y - dragOffset.Y
+        )
+        
+        -- Set position directly
+        MainFrame.Position = newPosition
+    end
+    
+    -- Keep the existing resize code here...
+    if isResizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local deltaX = input.Position.X - resizeStartPos.X
+        local deltaY = input.Position.Y - resizeStartPos.Y
+        
+        local newWidth = math.clamp(resizeStartSize.X.Offset + deltaX, config.minSize.X, config.maxSize.X)
+        local newHeight = math.clamp(resizeStartSize.Y.Offset + deltaY, config.minSize.Y, config.maxSize.Y)
+        
+        MainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
     end
 end)
+
+-- Add this TitleBar.InputEnded connection to handle releasing the mouse:
+TitleBar.InputEnded:Connect(function(input)
+    if (input.UserInputType == Enum.UserInputType.MouseButton1 or 
+        input.UserInputType == Enum.UserInputType.Touch) then
+        
+        isDragging = false
+    end
+end)
+
+-- Also add a global InputEnded connection to ensure dragging stops even if released outside the TitleBar:
+UserInputService.InputEnded:Connect(function(input)
+    if (input.UserInputType == Enum.UserInputType.MouseButton1 or 
+        input.UserInputType == Enum.UserInputType.Touch) then
+        
+        isDragging = false
+    end
+end)
+
+-- You can remove the previous InputEnded connection for TitleBar
+-- as we're handling it in the InputBegan's Changed event
 
 -- Resizing functionality
 ResizeHandle.InputBegan:Connect(function(input)
@@ -445,15 +498,19 @@ ResizeHandle.InputEnded:Connect(function(input)
 end)
 
 -- Move and resize handlers
+-- Replace the current InputChanged event handler with this:
 UserInputService.InputChanged:Connect(function(input)
     if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local newPosition = UDim2.new(0, input.Position.X - dragOffset.X, 0, input.Position.Y - dragOffset.Y)
+        -- Calculate new position directly without tweening
+        local newPosition = UDim2.new(
+            0, 
+            input.Position.X - dragOffset.X, 
+            0, 
+            input.Position.Y - dragOffset.Y
+        )
         
-        -- Add smooth animation to dragging
-        local dragTween = TweenService:Create(MainFrame, TweenInfo.new(0.1), {
-            Position = newPosition
-        })
-        dragTween:Play()
+        -- Apply new position immediately
+        MainFrame.Position = newPosition
     end
     
     if isResizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
@@ -463,7 +520,7 @@ UserInputService.InputChanged:Connect(function(input)
         local newWidth = math.clamp(resizeStartSize.X.Offset + deltaX, config.minSize.X, config.maxSize.X)
         local newHeight = math.clamp(resizeStartSize.Y.Offset + deltaY, config.minSize.Y, config.maxSize.Y)
         
-        -- Apply resize immediately (without animation for better UX)
+        -- Apply resize immediately
         MainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
     end
 end)

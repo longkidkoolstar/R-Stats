@@ -177,6 +177,366 @@ StatsContainer.BackgroundTransparency = 1
 StatsContainer.BorderSizePixel = 0
 StatsContainer.Parent = MainFrame
 
+-- Add this after the existing StatsContainer creation
+
+-- Create Tabs Container
+local TabsContainer = Instance.new("Frame")
+TabsContainer.Name = "TabsContainer"
+TabsContainer.Size = UDim2.new(1, -20, 0, 30)
+TabsContainer.Position = UDim2.new(0, 10, 0, config.titleBarHeight + 5)
+TabsContainer.BackgroundTransparency = 1
+TabsContainer.BorderSizePixel = 0
+TabsContainer.Parent = MainFrame
+
+-- Stats Tab Button
+local StatsTabButton = Instance.new("TextButton")
+StatsTabButton.Name = "StatsTabButton"
+StatsTabButton.Size = UDim2.new(0.4, 0, 1, 0)
+StatsTabButton.Position = UDim2.new(0, 0, 0, 0)
+StatsTabButton.BackgroundColor3 = config.accentColor
+StatsTabButton.BackgroundTransparency = 0.5
+StatsTabButton.Text = "Stats"
+StatsTabButton.TextColor3 = config.textColor
+StatsTabButton.TextSize = 14
+StatsTabButton.Font = config.font
+StatsTabButton.Parent = TabsContainer
+
+-- Cheats Tab Button
+local CheatsTabButton = Instance.new("TextButton")
+CheatsTabButton.Name = "CheatsTabButton"
+CheatsTabButton.Size = UDim2.new(0.4, 0, 1, 0)
+CheatsTabButton.Position = UDim2.new(0.6, 0, 0, 0)
+CheatsTabButton.BackgroundColor3 = config.accentColor
+CheatsTabButton.BackgroundTransparency = 0.8
+CheatsTabButton.Text = "Cheats"
+CheatsTabButton.TextColor3 = config.textColor
+CheatsTabButton.TextSize = 14
+CheatsTabButton.Font = config.font
+CheatsTabButton.Parent = TabsContainer
+
+-- Corner Rounding for Tabs
+local TabUICorner = Instance.new("UICorner")
+TabUICorner.CornerRadius = UDim.new(0, 4)
+TabUICorner.Parent = StatsTabButton
+TabUICorner:Clone().Parent = CheatsTabButton
+
+-- Create Cheats Container
+local CheatsContainer = Instance.new("Frame")
+CheatsContainer.Name = "CheatsContainer"
+CheatsContainer.Size = UDim2.new(1, -20, 1, -(config.titleBarHeight + 40))
+CheatsContainer.Position = UDim2.new(0, 10, 0, config.titleBarHeight + 40)
+CheatsContainer.BackgroundTransparency = 1
+CheatsContainer.BorderSizePixel = 0
+CheatsContainer.Visible = false -- Initially hidden
+CheatsContainer.Parent = MainFrame
+
+-- Function to create cheat buttons
+local function createCheatButton(name, yPos, callback)
+    local Button = Instance.new("TextButton")
+    Button.Name = name .. "Button"
+    Button.Size = UDim2.new(1, 0, 0, 30)
+    Button.Position = UDim2.new(0, 0, 0, yPos)
+    Button.BackgroundColor3 = Color3.fromRGB(64, 68, 75) -- Discord mention background
+    Button.BackgroundTransparency = 0.9
+    Button.Text = name
+    Button.TextColor3 = config.textColor
+    Button.TextSize = 14
+    Button.Font = config.font
+    Button.Parent = CheatsContainer
+
+    -- Corner Rounding
+    local ButtonUICorner = Instance.new("UICorner")
+    ButtonUICorner.CornerRadius = UDim.new(0, 4)
+    ButtonUICorner.Parent = Button
+
+    -- Hover effect
+    Button.MouseEnter:Connect(function()
+        local hoverTween = TweenService:Create(Button, TweenInfo.new(0.2), {
+            BackgroundTransparency = 0.8
+        })
+        hoverTween:Play()
+    end)
+
+    Button.MouseLeave:Connect(function()
+        local leaveTween = TweenService:Create(Button, TweenInfo.new(0.2), {
+            BackgroundTransparency = 0.9
+        })
+        leaveTween:Play()
+    end)
+
+    -- Click event
+    Button.MouseButton1Click:Connect(callback)
+end
+
+-- Fly Cheat
+local isFlying = false
+local flyBodyVelocity = nil
+local flyBodyGyro = nil
+local flyConnection = nil
+
+createCheatButton("Fly", 0, function()
+    isFlying = not isFlying
+
+    if isFlying then
+        -- Enable Fly
+        local humanoidRootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not humanoidRootPart then return end
+        
+        flyBodyVelocity = Instance.new("BodyVelocity")
+        flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        flyBodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge) -- Set proper max force
+        flyBodyVelocity.Parent = humanoidRootPart
+
+        flyBodyGyro = Instance.new("BodyGyro")
+        flyBodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge) -- Set proper max torque
+        flyBodyGyro.P = 10000
+        flyBodyGyro.D = 100
+        flyBodyGyro.CFrame = humanoidRootPart.CFrame
+        flyBodyGyro.Parent = humanoidRootPart
+
+        -- Enable controls
+        local userInputService = game:GetService("UserInputService")
+        local camera = workspace.CurrentCamera
+
+        -- Disconnect previous connection if it exists
+        if flyConnection then flyConnection:Disconnect() end
+        
+        flyConnection = RunService.Heartbeat:Connect(function()
+            if not isFlying or not humanoidRootPart or not humanoidRootPart.Parent then 
+                if flyConnection then flyConnection:Disconnect() end
+                return 
+            end
+
+            local direction = Vector3.new()
+            if userInputService:IsKeyDown(Enum.KeyCode.W) then
+                direction = direction + camera.CFrame.LookVector
+            end
+            if userInputService:IsKeyDown(Enum.KeyCode.S) then
+                direction = direction - camera.CFrame.LookVector
+            end
+            if userInputService:IsKeyDown(Enum.KeyCode.A) then
+                direction = direction - camera.CFrame.RightVector
+            end
+            if userInputService:IsKeyDown(Enum.KeyCode.D) then
+                direction = direction + camera.CFrame.RightVector
+            end
+            if userInputService:IsKeyDown(Enum.KeyCode.Space) then
+                direction = direction + Vector3.new(0, 1, 0)
+            end
+            if userInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                direction = direction - Vector3.new(0, 1, 0)
+            end
+
+            if direction.Magnitude > 0 then
+                direction = direction.Unit * 50
+            end
+
+            flyBodyVelocity.Velocity = direction
+            flyBodyGyro.CFrame = CFrame.lookAt(humanoidRootPart.Position, humanoidRootPart.Position + camera.CFrame.LookVector)
+        end)
+    else
+        -- Disable Fly
+        if flyConnection then 
+            flyConnection:Disconnect() 
+            flyConnection = nil
+        end
+        
+        if flyBodyVelocity then
+            flyBodyVelocity:Destroy()
+            flyBodyVelocity = nil
+        end
+        
+        if flyBodyGyro then
+            flyBodyGyro:Destroy()
+            flyBodyGyro = nil
+        end
+    end
+end)
+
+-- ESP Cheat
+local isESPEnabled = false
+local espBoxes = {}
+
+createCheatButton("ESP", 35, function()
+    isESPEnabled = not isESPEnabled
+
+    if isESPEnabled then
+        -- Enable ESP
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                local character = player.Character
+                local box = Instance.new("BoxHandleAdornment")
+                box.Size = character:GetExtentsSize()
+                box.Adornee = character
+                box.AlwaysOnTop = true
+                box.ZIndex = 10
+                box.Transparency = 0.5
+                box.Color3 = Color3.new(1, 0, 0)
+                box.Parent = character
+
+                espBoxes[player] = box
+            end
+        end
+
+        -- Listen for new players
+        Players.PlayerAdded:Connect(function(player)
+            player.CharacterAdded:Connect(function(character)
+                if isESPEnabled then
+                    local box = Instance.new("BoxHandleAdornment")
+                    box.Size = character:GetExtentsSize()
+                    box.Adornee = character
+                    box.AlwaysOnTop = true
+                    box.ZIndex = 10
+                    box.Transparency = 0.5
+                    box.Color3 = Color3.new(1, 0, 0)
+                    box.Parent = character
+
+                    espBoxes[player] = box
+                end
+            end)
+        end)
+    else
+        -- Disable ESP
+        for player, box in pairs(espBoxes) do
+            box:Destroy()
+        end
+        espBoxes = {}
+    end
+end)
+
+local bToolsEnabled = false
+local bTools = {}
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+-- Global hover SelectionBox
+local hoverBox = Instance.new("SelectionBox")
+hoverBox.LineThickness = 0.05
+hoverBox.Color3 = Color3.fromRGB(255, 255, 0)
+hoverBox.Parent = workspace
+hoverBox.Adornee = nil
+
+-- Updates hover highlight
+RunService.RenderStepped:Connect(function()
+    if bToolsEnabled then
+        local target = Mouse.Target
+        if target and target:IsA("BasePart") then
+            hoverBox.Adornee = target
+        else
+            hoverBox.Adornee = nil
+        end
+    else
+        hoverBox.Adornee = nil
+    end
+end)
+
+createCheatButton("B-Tools", 70, function()
+    bToolsEnabled = not bToolsEnabled
+
+    if bToolsEnabled then
+        -- 🛠 Hammer Tool
+        local hammer = Instance.new("Tool")
+        hammer.Name = "Hammer"
+        hammer.RequiresHandle = false
+
+        hammer.Activated:Connect(function()
+            local target = Mouse.Target
+            if target then
+                target:Destroy()
+            end
+        end)
+
+        hammer.Parent = LocalPlayer.Backpack
+        table.insert(bTools, hammer)
+
+        -- 🧱 Clone Tool
+        local clone = Instance.new("Tool")
+        clone.Name = "Clone"
+        clone.RequiresHandle = false
+
+        clone.Activated:Connect(function()
+            local target = Mouse.Target
+            if target and target:IsA("BasePart") then
+                local newPart = target:Clone()
+                newPart.Parent = target.Parent
+                newPart.Position = target.Position + Vector3.new(0, target.Size.Y, 0)
+            end
+        end)
+
+        clone.Parent = LocalPlayer.Backpack
+        table.insert(bTools, clone)
+
+        -- ✋ Grab Tool
+        local grab = Instance.new("Tool")
+        grab.Name = "Grab"
+        grab.RequiresHandle = false
+
+        local selectedPart = nil
+        local selectionBox = Instance.new("SelectionBox")
+        selectionBox.LineThickness = 0.05
+        selectionBox.Color3 = Color3.fromRGB(0, 170, 255)
+        selectionBox.Parent = workspace
+
+        local moveConn = nil
+
+        grab.Activated:Connect(function()
+            local target = Mouse.Target
+            if target and target:IsA("BasePart") and not selectedPart then
+                selectedPart = target
+                selectionBox.Adornee = selectedPart
+
+                moveConn = RunService.RenderStepped:Connect(function()
+                    if selectedPart and grab.Enabled then
+                        local ray = workspace.CurrentCamera:ScreenPointToRay(Mouse.X, Mouse.Y)
+                        local targetPos = ray.Origin + ray.Direction * 25
+                        selectedPart.Position = targetPos
+                    end
+                end)
+            else
+                selectedPart = nil
+                selectionBox.Adornee = nil
+                if moveConn then moveConn:Disconnect() end
+            end
+        end)
+
+        grab.Deactivated:Connect(function()
+            selectedPart = nil
+            selectionBox.Adornee = nil
+            if moveConn then moveConn:Disconnect() end
+        end)
+
+        grab.Parent = LocalPlayer.Backpack
+        table.insert(bTools, grab)
+    else
+        for _, tool in pairs(bTools) do
+            tool:Destroy()
+        end
+        bTools = {}
+        hoverBox.Adornee = nil
+    end
+end)
+
+-- Tab Switching Logic
+StatsTabButton.MouseButton1Click:Connect(function()
+    StatsContainer.Visible = true
+    CheatsContainer.Visible = false
+    StatsTabButton.BackgroundTransparency = 0.5
+    CheatsTabButton.BackgroundTransparency = 0.8
+end)
+
+CheatsTabButton.MouseButton1Click:Connect(function()
+    StatsContainer.Visible = false
+    CheatsContainer.Visible = true
+    StatsTabButton.BackgroundTransparency = 0.8
+    CheatsTabButton.BackgroundTransparency = 0.5
+end)
+
+-- Initialize with Stats tab open
+StatsTabButton.BackgroundTransparency = 0.5
+CheatsTabButton.BackgroundTransparency = 0.8
 -- Username Display with Discord-like mention box
 local UsernameContainer = Instance.new("Frame")
 UsernameContainer.Name = "UsernameContainer"
